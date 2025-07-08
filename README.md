@@ -1,2 +1,3 @@
 # quiz-learn-english-words
-Интерактивная викторина для изучения английских слов
+Interactive quiz for learning English verbs
+Интерактивная викторина для изучения английских глаголов
