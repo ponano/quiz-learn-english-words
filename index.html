@@ -1,0 +1,649 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Викторина: Угадай пару</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+        .word-list {
+            display: flex;
+            justify-content: space-between;
+            margin: 20px 0;
+        }
+        .column {
+            width: 45%;
+        }
+        .word {
+            padding: 10px;
+            margin: 5px 0;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        .word:hover {
+            background-color: #e0e0e0;
+        }
+        .selected {
+            background-color: #007bff;
+            color: white;
+        }
+        .correct {
+            background-color: #28a745;
+            color: white;
+            pointer-events: none;
+        }
+        .incorrect {
+            background-color: #dc3545;
+            color: white;
+        }
+        .disabled {
+            pointer-events: none;
+            opacity: 0.6;
+        }
+        #stats {
+            margin-top: 20px;
+            font-size: 18px;
+        }
+        #progress {
+            margin-top: 10px;
+            font-size: 16px;
+        }
+        #progress-bar-container {
+            width: 100%;
+            background-color: #e0e0e0;
+            border-radius: 5px;
+            height: 20px;
+            margin-top: 5px;
+        }
+        #progress-bar {
+            height: 100%;
+            background-color: #28a745;
+            border-radius: 5px;
+            transition: width 0.3s;
+        }
+        #result {
+            margin-top: 20px;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        #button-container {
+            margin-top: 10px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+        #restart-button, #share-button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        #restart-button:hover, #share-button:hover {
+            background-color: #0056b3;
+        }
+        #share-button {
+            display: none;
+        }
+        #share-message {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #28a745;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Викторина: Угадай пару</h1>
+        <div id="progress"></div>
+        <div id="progress-bar-container">
+            <div id="progress-bar" style="width: 0%;"></div>
+        </div>
+        <div class="word-list">
+            <div class="column" id="english-words"></div>
+            <div class="column" id="russian-words"></div>
+        </div>
+        <div id="stats"></div>
+        <div id="result"></div>
+        <div id="button-container">
+            <button id="restart-button">Начать с начала</button>
+            <button id="share-button">Поделиться результатом</button>
+        </div>
+        <div id="share-message"></div>
+    </div>
+
+    <script>
+        // Word pairs list with lowercase Russian translations
+        const wordPairs = [
+            { en: "To be", ru: "быть" },
+            { en: "To do", ru: "делать" },
+            { en: "To feel", ru: "чувствовать" },
+            { en: "To see", ru: "видеть" },
+            { en: "To hear", ru: "слышать" },
+            { en: "To run", ru: "бежать" },
+            { en: "To get", ru: "получать" },
+            { en: "To make", ru: "создавать" },
+            { en: "To cook", ru: "готовить" },
+            { en: "To sing", ru: "петь" },
+            { en: "To speak", ru: "говорить" },
+            { en: "To say", ru: "сказать" },
+            { en: "To tell", ru: "рассказать" },
+            { en: "To take", ru: "брать" },
+            { en: "To sit", ru: "сидеть" },
+            { en: "To stand", ru: "стоять" },
+            { en: "To laugh", ru: "смеяться" },
+            { en: "To smile", ru: "улыбаться" },
+            { en: "To open", ru: "открывать" },
+            { en: "To close", ru: "закрывать" },
+            { en: "To love", ru: "любить" },
+            { en: "To like", ru: "нравиться" },
+            { en: "To give", ru: "давать" },
+            { en: "To bring", ru: "приносить" },
+            { en: "To breathe", ru: "дышать" },
+            { en: "To buy", ru: "покупать" },
+            { en: "To sell", ru: "продавать" },
+            { en: "To forget", ru: "забывать" },
+            { en: "To believe", ru: "верить" },
+            { en: "To have", ru: "иметь" },
+            { en: "To go", ru: "идти" },
+            { en: "To know", ru: "знать" },
+            { en: "To think", ru: "думать" },
+            { en: "To come", ru: "приходить" },
+            { en: "To want", ru: "хотеть" },
+            { en: "To use", ru: "использовать" },
+            { en: "To find", ru: "находить" },
+            { en: "To work", ru: "работать" },
+            { en: "To eat", ru: "есть" },
+            { en: "To drink", ru: "пить" },
+            { en: "To write", ru: "писать" },
+            { en: "To read", ru: "читать" },
+            { en: "To call", ru: "звонить" },
+            { en: "To try", ru: "пытаться" },
+            { en: "To need", ru: "нуждаться" },
+            { en: "To become", ru: "становиться" },
+            { en: "To put", ru: "класть" },
+            { en: "To leave", ru: "уходить" },
+            { en: "To pay", ru: "платить" },
+            { en: "To play", ru: "играть" },
+            { en: "To pray", ru: "молиться" },
+            { en: "To stay", ru: "оставаться" },
+            { en: "To mean", ru: "означать" },
+            { en: "To keep", ru: "держать" },
+            { en: "To let", ru: "позволять" },
+            { en: "To begin", ru: "начинать" },
+            { en: "To start", ru: "запускать" },
+            { en: "To finish", ru: "заканчивать" },
+            { en: "To help", ru: "помогать" },
+            { en: "To show", ru: "показывать" },
+            { en: "To cry", ru: "плакать" },
+            { en: "To move", ru: "двигаться" },
+            { en: "To jump", ru: "прыгать" },
+            { en: "To live", ru: "жить" },
+            { en: "To die", ru: "умирать" },
+            { en: "To happen", ru: "происходить" },
+            { en: "To lose", ru: "терять" },
+            { en: "To hate", ru: "ненавидеть" },
+            { en: "To include", ru: "включать" },
+            { en: "To turn on", ru: "включать" },
+            { en: "To turn off", ru: "выключать" },
+            { en: "To continue", ru: "продолжать" },
+            { en: "To change", ru: "менять" },
+            { en: "To wash", ru: "мыть" },
+            { en: "To clean", ru: "чистить" },
+            { en: "To lead", ru: "вести" },
+            { en: "To understand", ru: "понимать" },
+            { en: "To watch", ru: "смотреть" },
+            { en: "To discover", ru: "открывать" },
+            { en: "To imagine", ru: "воображать" },
+            { en: "To introduce", ru: "представлять" },
+            { en: "To follow", ru: "следовать" },
+            { en: "To create", ru: "создавать" },
+            { en: "To grow", ru: "расти" },
+            { en: "To spend", ru: "тратить" },
+            { en: "To win", ru: "побеждать" },
+            { en: "To offer", ru: "предлагать" },
+            { en: "To learn", ru: "учиться" },
+            { en: "To appear", ru: "появляться" },
+            { en: "To disappear", ru: "исчезать" },
+            { en: "To build", ru: "строить" },
+            { en: "To break", ru: "ломать" },
+            { en: "To send", ru: "отправлять" },
+            { en: "To fall", ru: "падать" },
+            { en: "To cut", ru: "резать" },
+            { en: "To achieve", ru: "достигать" },
+            { en: "To communicate", ru: "общаться" },
+            { en: "To kill", ru: "убивать" },
+            { en: "To pass", ru: "проходить" },
+            { en: "To fly", ru: "летать" },
+            { en: "To swim", ru: "плавать" },
+            { en: "To decide", ru: "решать" },
+            { en: "To return", ru: "возвращаться" },
+            { en: "To hope", ru: "надеяться" },
+            { en: "To explain", ru: "объяснять" },
+            { en: "To propose", ru: "предлагать" },
+            { en: "To develop", ru: "развивать" },
+            { en: "To support", ru: "поддерживать" },
+            { en: "To dance", ru: "танцевать" },
+            { en: "To draw", ru: "рисовать" },
+            { en: "To book", ru: "бронировать" },
+            { en: "To be afraid", ru: "бояться" },
+            { en: "To agree", ru: "соглашаться" },
+            { en: "To check up", ru: "проверять" },
+            { en: "To delete", ru: "удалять" },
+            { en: "To choose", ru: "выбирать" },
+            { en: "To catch", ru: "ловить" },
+            { en: "To ask", ru: "спрашивать" },
+            { en: "To answer", ru: "отвечать" },
+            { en: "To hesitate", ru: "колебаться" }
+        ];
+
+        // Quiz state variables
+        let currentBatch = 0;
+        const batchSize = 10; // 10 pairs per page
+        let selectedEn = null;
+        let selectedRu = null;
+        let correctAnswers = 0;
+        let totalAttempts = 0;
+        let matchedPairs = [];
+        let batchAttempts = 0; // Counter for attempts in the current batch
+        let batches = []; // Store precomputed batches
+        const totalWords = wordPairs.length; // Total number of words (116)
+
+        // Create batches with unique Russian translations
+        function createBatches() {
+            try {
+                batches = [];
+                const shuffledPairs = shuffle([...wordPairs]);
+                for (let i = 0; i < shuffledPairs.length; i += batchSize) {
+                    const batch = shuffledPairs.slice(i, i + batchSize);
+                    // Ensure unique Russian translations in each batch
+                    const uniqueBatch = [];
+                    const usedTranslations = new Set();
+                    for (const pair of batch) {
+                        if (!usedTranslations.has(pair.ru)) {
+                            uniqueBatch.push(pair);
+                            usedTranslations.add(pair.ru);
+                        }
+                    }
+                    if (uniqueBatch.length > 0) {
+                        batches.push(uniqueBatch);
+                    }
+                }
+                console.log("Created batches:", batches); // Debug log
+                if (batches.length === 0) {
+                    console.error("No batches created");
+                }
+            } catch (error) {
+                console.error("Error in createBatches:", error);
+            }
+        }
+
+        // Shuffle array function
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        // Share result function
+        function shareResult() {
+            const percentage = totalAttempts > 0 ? ((correctAnswers / totalAttempts) * 100).toFixed(2) : 0;
+            const shareText = percentage >= 95
+                ? `Я прошел викторину "Угадай пару" с результатом ${percentage}% (${correctAnswers} правильных из ${totalAttempts} попыток)! 🎉`
+                : `Я завершил викторину "Угадай пару" с результатом ${percentage}% (${correctAnswers} правильных из ${totalAttempts} попыток). Нужно 95% для прохождения!`;
+
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Результат викторины "Угадай пару"',
+                    text: shareText,
+                    url: window.location.href
+                }).catch(err => {
+                    console.error("Error sharing:", err);
+                    copyToClipboard(shareText);
+                });
+            } else {
+                copyToClipboard(shareText);
+            }
+        }
+
+        // Copy to clipboard function
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                const shareMessage = document.getElementById('share-message');
+                if (shareMessage) {
+                    shareMessage.textContent = 'Результат скопирован в буфер обмена!';
+                    shareMessage.style.display = 'block';
+                    setTimeout(() => {
+                        shareMessage.style.display = 'none';
+                    }, 2000);
+                }
+            }).catch(err => {
+                console.error("Error copying to clipboard:", err);
+                alert('Не удалось скопировать результат. Пожалуйста, скопируйте вручную: ' + text);
+            });
+        }
+
+        // Restart quiz function with confirmation
+        function restartQuiz() {
+            console.log("Restart button clicked"); // Debug log
+            // Use confirm, fallback to alert for testing
+            const confirmed = window.confirm("Вы уверены, что хотите начать заново? Прогресс будет потерян.") || 
+                             (alert("Предупреждение: Вы собираетесь сбросить прогресс."), window.confirm("Подтвердите сброс"));
+            console.log("Confirm result:", confirmed); // Debug log
+            if (confirmed) {
+                console.log("Restarting quiz..."); // Debug log
+                // Reset state
+                currentBatch = 0;
+                selectedEn = null;
+                selectedRu = null;
+                correctAnswers = 0;
+                totalAttempts = 0;
+                matchedPairs = [];
+                batchAttempts = 0;
+                batches = [];
+                console.log("State reset:", { currentBatch, correctAnswers, totalAttempts }); // Debug log
+
+                // Clear DOM elements individually
+                const elements = {
+                    englishWords: document.getElementById('english-words'),
+                    russianWords: document.getElementById('russian-words'),
+                    stats: document.getElementById('stats'),
+                    result: document.getElementById('result'),
+                    shareButton: document.getElementById('share-button'),
+                    shareMessage: document.getElementById('share-message')
+                };
+                if (elements.englishWords) elements.englishWords.innerHTML = '';
+                if (elements.russianWords) elements.russianWords.innerHTML = '';
+                if (elements.stats) elements.stats.textContent = '';
+                if (elements.result) elements.result.textContent = '';
+                if (elements.shareButton) elements.shareButton.style.display = 'none';
+                if (elements.shareMessage) elements.shareMessage.style.display = 'none';
+                if (elements.englishWords) elements.englishWords.classList.remove('disabled');
+                if (elements.russianWords) elements.russianWords.classList.remove('disabled');
+                
+                if (Object.values(elements).every(el => el)) {
+                    console.log("DOM cleared"); // Debug log
+                } else {
+                    console.error("One or more DOM elements not found during restart:", 
+                        Object.keys(elements).filter(key => !elements[key]));
+                }
+
+                try {
+                    createBatches();
+                    console.log("Batches created"); // Debug log
+                    displayBatch();
+                    console.log("New batch displayed"); // Debug log
+                } catch (error) {
+                    console.error("Error during restart:", error);
+                }
+            } else {
+                console.log("Restart cancelled"); // Debug log
+            }
+        }
+
+        // Update progress bar and text
+        function updateProgress() {
+            const progressElement = document.getElementById('progress');
+            const progressBar = document.getElementById('progress-bar');
+            if (progressElement && progressBar) {
+                const totalBatches = batches.length || 1; // Prevent division by zero
+                const progressPercentage = totalAttempts > 0 ? ((totalAttempts / totalWords) * 100).toFixed(2) : 0;
+                progressElement.textContent = `Лист ${currentBatch + 1} из ${totalBatches} | Пройдено ${totalAttempts}/${totalWords} слов`;
+                progressBar.style.width = `${progressPercentage}%`;
+            } else {
+                console.error("Progress elements not found");
+            }
+        }
+
+        // Display current batch of words
+        function displayBatch() {
+            const englishWords = document.getElementById('english-words');
+            const russianWords = document.getElementById('russian-words');
+            if (!englishWords || !russianWords) {
+                console.error("DOM elements 'english-words' or 'russian-words' not found");
+                return;
+            }
+            englishWords.innerHTML = '';
+            russianWords.innerHTML = '';
+            batchAttempts = 0; // Reset batch attempts counter
+
+            if (batches.length === 0) {
+                createBatches();
+            }
+
+            if (currentBatch >= batches.length) {
+                console.error("No more batches to display");
+                checkQuizCompletion();
+                return;
+            }
+
+            const currentPairs = batches[currentBatch];
+            console.log(`Displaying batch ${currentBatch + 1}:`, currentPairs); // Debug log
+
+            if (!currentPairs || currentPairs.length === 0) {
+                console.error("No pairs to display in current batch");
+                return;
+            }
+
+            const shuffledRu = shuffle([...currentPairs]);
+
+            currentPairs.forEach(pair => {
+                const enDiv = document.createElement('div');
+                enDiv.classList.add('word');
+                enDiv.textContent = pair.en.replace(/^To\s/, '');
+                enDiv.dataset.word = pair.en; // Keep original for matching
+                enDiv.addEventListener('click', () => selectWord(enDiv, 'en'));
+                englishWords.appendChild(enDiv);
+            });
+
+            shuffledRu.forEach(pair => {
+                const ruDiv = document.createElement('div');
+                ruDiv.classList.add('word');
+                ruDiv.textContent = pair.ru;
+                ruDiv.dataset.word = pair.en; // Use original English word for matching
+                ruDiv.addEventListener('click', () => selectWord(ruDiv, 'ru'));
+                russianWords.appendChild(ruDiv);
+            });
+
+            updateStats();
+            updateProgress();
+        }
+
+        // Handle word selection
+        function selectWord(element, type) {
+            if (element.classList.contains('correct')) return; // Cannot select already correct word
+
+            if (type === 'en') {
+                if (element === selectedEn) {
+                    // Deselect if clicked again
+                    element.classList.remove('selected');
+                    selectedEn = null;
+                } else {
+                    if (selectedEn) selectedEn.classList.remove('selected');
+                    selectedEn = element;
+                    selectedEn.classList.add('selected');
+                }
+            } else {
+                if (element === selectedRu) {
+                    // Deselect if clicked again
+                    element.classList.remove('selected');
+                    selectedRu = null;
+                } else {
+                    if (selectedRu) selectedRu.classList.remove('selected');
+                    selectedRu = element;
+                    selectedRu.classList.add('selected');
+                }
+            }
+
+            if (selectedEn && selectedRu) {
+                checkPair();
+            }
+        }
+
+        // Check selected pair
+        function checkPair() {
+            totalAttempts++;
+            batchAttempts++;
+            const isCorrect = selectedEn && selectedRu && selectedEn.dataset.word === selectedRu.dataset.word;
+
+            if (isCorrect) {
+                selectedEn.classList.add('correct');
+                selectedRu.classList.add('correct');
+                selectedEn.classList.remove('selected');
+                selectedRu.classList.remove('selected');
+                correctAnswers++;
+                matchedPairs.push(selectedEn.dataset.word);
+            } else {
+                selectedEn.classList.add('incorrect');
+                selectedRu.classList.add('incorrect');
+                selectedEn.classList.remove('selected');
+                selectedRu.classList.remove('selected');
+                setTimeout(() => {
+                    if (selectedEn && !selectedEn.classList.contains('correct')) selectedEn.classList.remove('incorrect');
+                    if (selectedRu && !selectedRu.classList.contains('correct')) selectedRu.classList.remove('incorrect');
+                }, 1000);
+            }
+
+            selectedEn = null;
+            selectedRu = null;
+
+            updateStats();
+            updateProgress();
+
+            // Check if current batch is complete
+            const currentBatchSize = batches[currentBatch]?.length || 0;
+            if (batchAttempts >= currentBatchSize) {
+                if (currentBatch + 1 < batches.length) {
+                    currentBatch++;
+                    displayBatch();
+                } else {
+                    checkQuizCompletion();
+                }
+            }
+        }
+
+        // Update statistics
+        function updateStats() {
+            const statsElement = document.getElementById('stats');
+            if (statsElement) {
+                const percentage = totalAttempts > 0 ? ((correctAnswers / totalAttempts) * 100).toFixed(2) : 0;
+                statsElement.textContent = `Правильных ответов: ${correctAnswers} из ${totalAttempts} (${percentage}%)`;
+            } else {
+                console.error("Stats element not found");
+            }
+        }
+
+        // Check quiz completion
+        function checkQuizCompletion() {
+            const percentage = totalAttempts > 0 ? ((correctAnswers / totalAttempts) * 100).toFixed(2) : 0;
+            const resultElement = document.getElementById('result');
+            const shareButton = document.getElementById('share-button');
+            if (resultElement && shareButton) {
+                if (percentage >= 95) {
+                    resultElement.textContent = `Поздравляем! Вы прошли викторину с ${percentage}% правильных ответов!`;
+                    document.getElementById('english-words')?.classList.add('disabled');
+                    document.getElementById('russian-words')?.classList.add('disabled');
+                } else {
+                    resultElement.textContent = `Викторина завершена. Ваш результат: ${percentage}%. Нужно 95% или выше для прохождения.`;
+                }
+                shareButton.style.display = 'block';
+                shareButton.removeEventListener('click', shareResult); // Prevent duplicate listeners
+                shareButton.addEventListener('click', shareResult);
+            } else {
+                console.error("Result or share button element not found");
+            }
+        }
+
+        // Initialize quiz
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log("DOM fully loaded"); // Debug log
+            const restartButton = document.getElementById('restart-button');
+            if (restartButton) {
+                console.log("Restart button found, adding event listener"); // Debug log
+                restartButton.removeEventListener('click', restartQuiz); // Prevent duplicate listeners
+                restartButton.addEventListener('click', restartQuiz);
+            } else {
+                console.error("Restart button not found in DOM");
+                // Retry after a delay
+                setTimeout(() => {
+                    const retryButton = document.getElementById('restart-button');
+                    if (retryButton) {
+                        console.log("Retry: Restart button found, adding event listener");
+                        retryButton.removeEventListener('click', restartQuiz);
+                        retryButton.addEventListener('click', restartQuiz);
+                    } else {
+                        console.error("Retry: Restart button still not found");
+                    }
+                }, 1000);
+            }
+            try {
+                console.log("Initializing quiz..."); // Debug log
+                createBatches();
+                displayBatch();
+            } catch (error) {
+                console.error("Error initializing quiz:", error);
+            }
+        });
+    </script>
+</body>
+</html>
