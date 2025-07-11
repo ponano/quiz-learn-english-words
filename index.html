@@ -171,7 +171,7 @@
     </div>
 
     <script>
-        // Word pairs list with lowercase Russian translations
+        // Список пар слов с русскими переводами в нижнем регистре
         const wordPairs = [
             { en: "To be", ru: "быть" },
             { en: "To do", ru: "делать" },
@@ -295,26 +295,26 @@
             { en: "To hesitate", ru: "колебаться" }
         ];
 
-        // Quiz state variables
+        // Переменные состояния викторины
         let currentBatch = 0;
-        const batchSize = 10; // 10 pairs per page
+        const batchSize = 10; // 10 пар слов на странице
         let selectedEn = null;
         let selectedRu = null;
         let correctAnswers = 0;
         let totalAttempts = 0;
         let matchedPairs = [];
-        let batchAttempts = 0; // Counter for attempts in the current batch
-        let batches = []; // Store precomputed batches
-        const totalWords = wordPairs.length; // Total number of words (116)
+        let batchAttempts = 0; // Счётчик попыток в текущем листе
+        let batches = []; // Хранилище предварительно сформированных листов
+        const totalWords = wordPairs.length; // Общее количество слов (116)
 
-        // Create batches with unique Russian translations
+        // Создание листов с уникальными русскими переводами
         function createBatches() {
             try {
                 batches = [];
                 const shuffledPairs = shuffle([...wordPairs]);
                 for (let i = 0; i < shuffledPairs.length; i += batchSize) {
                     const batch = shuffledPairs.slice(i, i + batchSize);
-                    // Ensure unique Russian translations in each batch
+                    // Обеспечение уникальности русских переводов в каждом листе
                     const uniqueBatch = [];
                     const usedTranslations = new Set();
                     for (const pair of batch) {
@@ -327,16 +327,16 @@
                         batches.push(uniqueBatch);
                     }
                 }
-                console.log("Created batches:", batches); // Debug log
+                console.log("Созданы листы:", batches); // Журнал отладки
                 if (batches.length === 0) {
-                    console.error("No batches created");
+                    console.error("Листы не созданы");
                 }
             } catch (error) {
-                console.error("Error in createBatches:", error);
+                console.error("Ошибка в createBatches:", error);
             }
         }
 
-        // Shuffle array function
+        // Функция перемешивания массива
         function shuffle(array) {
             for (let i = array.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
@@ -345,12 +345,13 @@
             return array;
         }
 
-        // Share result function
+        // Функция шеринга результата
         function shareResult() {
             const percentage = totalAttempts > 0 ? ((correctAnswers / totalAttempts) * 100).toFixed(2) : 0;
+            const githubLink = 'https://github.com/ponano/quiz-learn-english-words';
             const shareText = percentage >= 95
-                ? `Я прошел викторину "Угадай пару" с результатом ${percentage}% (${correctAnswers} правильных из ${totalAttempts} попыток)! 🎉`
-                : `Я завершил викторину "Угадай пару" с результатом ${percentage}% (${correctAnswers} правильных из ${totalAttempts} попыток). Нужно 95% для прохождения!`;
+                ? `Я прошел викторину "Угадай пару" с результатом ${percentage}% (${correctAnswers} правильных из ${totalAttempts} попыток)! 🎉 Посмотрите код на GitHub: ${githubLink}`
+                : `Я завершил викторину "Угадай пару" с результатом ${percentage}% (${correctAnswers} правильных из ${totalAttempts} попыток). Нужно 95% для прохождения! Посмотрите код на GitHub: ${githubLink}`;
 
             if (navigator.share) {
                 navigator.share({
@@ -358,7 +359,7 @@
                     text: shareText,
                     url: window.location.href
                 }).catch(err => {
-                    console.error("Error sharing:", err);
+                    console.error("Ошибка при шеринге:", err);
                     copyToClipboard(shareText);
                 });
             } else {
@@ -366,7 +367,7 @@
             }
         }
 
-        // Copy to clipboard function
+        // Функция копирования текста в буфер обмена
         function copyToClipboard(text) {
             navigator.clipboard.writeText(text).then(() => {
                 const shareMessage = document.getElementById('share-message');
@@ -378,21 +379,20 @@
                     }, 2000);
                 }
             }).catch(err => {
-                console.error("Error copying to clipboard:", err);
+                console.error("Ошибка копирования в буфер обмена:", err);
                 alert('Не удалось скопировать результат. Пожалуйста, скопируйте вручную: ' + text);
             });
         }
 
-        // Restart quiz function with confirmation
+        // Функция перезапуска викторины с подтверждением
         function restartQuiz() {
-            console.log("Restart button clicked"); // Debug log
-            // Use confirm, fallback to alert for testing
-            const confirmed = window.confirm("Вы уверены, что хотите начать заново? Прогресс будет потерян.") || 
-                             (alert("Предупреждение: Вы собираетесь сбросить прогресс."), window.confirm("Подтвердите сброс"));
-            console.log("Confirm result:", confirmed); // Debug log
+            console.log("Нажата кнопка перезапуска"); // Журнал отладки
+            // Запрашивается подтверждение сброса прогресса
+            const confirmed = window.confirm("Вы уверены, что хотите начать заново? Прогресс будет потерян.");
+            console.log("Результат подтверждения:", confirmed); // Журнал отладки
             if (confirmed) {
-                console.log("Restarting quiz..."); // Debug log
-                // Reset state
+                console.log("Перезапуск викторины..."); // Журнал отладки
+                // Сброс состояния
                 currentBatch = 0;
                 selectedEn = null;
                 selectedRu = null;
@@ -401,9 +401,9 @@
                 matchedPairs = [];
                 batchAttempts = 0;
                 batches = [];
-                console.log("State reset:", { currentBatch, correctAnswers, totalAttempts }); // Debug log
+                console.log("Состояние сброшено:", { currentBatch, correctAnswers, totalAttempts }); // Журнал отладки
 
-                // Clear DOM elements individually
+                // Очистка DOM-элементов по отдельности
                 const elements = {
                     englishWords: document.getElementById('english-words'),
                     russianWords: document.getElementById('russian-words'),
@@ -422,66 +422,66 @@
                 if (elements.russianWords) elements.russianWords.classList.remove('disabled');
                 
                 if (Object.values(elements).every(el => el)) {
-                    console.log("DOM cleared"); // Debug log
+                    console.log("DOM очищен"); // Журнал отладки
                 } else {
-                    console.error("One or more DOM elements not found during restart:", 
+                    console.error("Один или несколько DOM-элементов не найдены при перезапуске:", 
                         Object.keys(elements).filter(key => !elements[key]));
                 }
 
                 try {
                     createBatches();
-                    console.log("Batches created"); // Debug log
+                    console.log("Листы созданы"); // Журнал отладки
                     displayBatch();
-                    console.log("New batch displayed"); // Debug log
+                    console.log("Новый лист отображён"); // Журнал отладки
                 } catch (error) {
-                    console.error("Error during restart:", error);
+                    console.error("Ошибка при перезапуске:", error);
                 }
             } else {
-                console.log("Restart cancelled"); // Debug log
+                console.log("Перезапуск отменён"); // Журнал отладки
             }
         }
 
-        // Update progress bar and text
+        // Обновление прогресс-бара и текста
         function updateProgress() {
             const progressElement = document.getElementById('progress');
             const progressBar = document.getElementById('progress-bar');
             if (progressElement && progressBar) {
-                const totalBatches = batches.length || 1; // Prevent division by zero
+                const totalBatches = batches.length || 1; // Предотвращение деления на ноль
                 const progressPercentage = totalAttempts > 0 ? ((totalAttempts / totalWords) * 100).toFixed(2) : 0;
                 progressElement.textContent = `Лист ${currentBatch + 1} из ${totalBatches} | Пройдено ${totalAttempts}/${totalWords} слов`;
                 progressBar.style.width = `${progressPercentage}%`;
             } else {
-                console.error("Progress elements not found");
+                console.error("Элементы прогресса не найдены");
             }
         }
 
-        // Display current batch of words
+        // Отображение текущего листа слов
         function displayBatch() {
             const englishWords = document.getElementById('english-words');
             const russianWords = document.getElementById('russian-words');
             if (!englishWords || !russianWords) {
-                console.error("DOM elements 'english-words' or 'russian-words' not found");
+                console.error("DOM-элементы 'english-words' или 'russian-words' не найдены");
                 return;
             }
             englishWords.innerHTML = '';
             russianWords.innerHTML = '';
-            batchAttempts = 0; // Reset batch attempts counter
+            batchAttempts = 0; // Сброс счётчика попыток в листе
 
             if (batches.length === 0) {
                 createBatches();
             }
 
             if (currentBatch >= batches.length) {
-                console.error("No more batches to display");
+                console.error("Больше нет листов для отображения");
                 checkQuizCompletion();
                 return;
             }
 
             const currentPairs = batches[currentBatch];
-            console.log(`Displaying batch ${currentBatch + 1}:`, currentPairs); // Debug log
+            console.log(`Отображение листа ${currentBatch + 1}:`, currentPairs); // Журнал отладки
 
             if (!currentPairs || currentPairs.length === 0) {
-                console.error("No pairs to display in current batch");
+                console.error("Нет пар для отображения в текущем листе");
                 return;
             }
 
@@ -491,7 +491,7 @@
                 const enDiv = document.createElement('div');
                 enDiv.classList.add('word');
                 enDiv.textContent = pair.en.replace(/^To\s/, '');
-                enDiv.dataset.word = pair.en; // Keep original for matching
+                enDiv.dataset.word = pair.en; // Сохранение оригинала для проверки
                 enDiv.addEventListener('click', () => selectWord(enDiv, 'en'));
                 englishWords.appendChild(enDiv);
             });
@@ -500,7 +500,7 @@
                 const ruDiv = document.createElement('div');
                 ruDiv.classList.add('word');
                 ruDiv.textContent = pair.ru;
-                ruDiv.dataset.word = pair.en; // Use original English word for matching
+                ruDiv.dataset.word = pair.en; // Использование оригинального английского слова для проверки
                 ruDiv.addEventListener('click', () => selectWord(ruDiv, 'ru'));
                 russianWords.appendChild(ruDiv);
             });
@@ -509,13 +509,13 @@
             updateProgress();
         }
 
-        // Handle word selection
+        // Обработка выбора слова
         function selectWord(element, type) {
-            if (element.classList.contains('correct')) return; // Cannot select already correct word
+            if (element.classList.contains('correct')) return; // Нельзя выбрать уже правильное слово
 
             if (type === 'en') {
                 if (element === selectedEn) {
-                    // Deselect if clicked again
+                    // Снятие выделения при повторном клике
                     element.classList.remove('selected');
                     selectedEn = null;
                 } else {
@@ -525,7 +525,7 @@
                 }
             } else {
                 if (element === selectedRu) {
-                    // Deselect if clicked again
+                    // Снятие выделения при повторном клике
                     element.classList.remove('selected');
                     selectedRu = null;
                 } else {
@@ -540,7 +540,7 @@
             }
         }
 
-        // Check selected pair
+        // Проверка выбранной пары
         function checkPair() {
             totalAttempts++;
             batchAttempts++;
@@ -570,7 +570,7 @@
             updateStats();
             updateProgress();
 
-            // Check if current batch is complete
+            // Проверка завершения текущего листа
             const currentBatchSize = batches[currentBatch]?.length || 0;
             if (batchAttempts >= currentBatchSize) {
                 if (currentBatch + 1 < batches.length) {
@@ -582,18 +582,18 @@
             }
         }
 
-        // Update statistics
+        // Обновление статистики
         function updateStats() {
             const statsElement = document.getElementById('stats');
             if (statsElement) {
                 const percentage = totalAttempts > 0 ? ((correctAnswers / totalAttempts) * 100).toFixed(2) : 0;
                 statsElement.textContent = `Правильных ответов: ${correctAnswers} из ${totalAttempts} (${percentage}%)`;
             } else {
-                console.error("Stats element not found");
+                console.error("Элемент статистики не найден");
             }
         }
 
-        // Check quiz completion
+        // Проверка завершения викторины
         function checkQuizCompletion() {
             const percentage = totalAttempts > 0 ? ((correctAnswers / totalAttempts) * 100).toFixed(2) : 0;
             const resultElement = document.getElementById('result');
@@ -607,41 +607,41 @@
                     resultElement.textContent = `Викторина завершена. Ваш результат: ${percentage}%. Нужно 95% или выше для прохождения.`;
                 }
                 shareButton.style.display = 'block';
-                shareButton.removeEventListener('click', shareResult); // Prevent duplicate listeners
+                shareButton.removeEventListener('click', shareResult); // Предотвращение дублирования обработчиков
                 shareButton.addEventListener('click', shareResult);
             } else {
-                console.error("Result or share button element not found");
+                console.error("Элемент результата или кнопка шеринга не найдены");
             }
         }
 
-        // Initialize quiz
+        // Инициализация викторины
         document.addEventListener('DOMContentLoaded', () => {
-            console.log("DOM fully loaded"); // Debug log
+            console.log("DOM полностью загружен"); // Журнал отладки
             const restartButton = document.getElementById('restart-button');
             if (restartButton) {
-                console.log("Restart button found, adding event listener"); // Debug log
-                restartButton.removeEventListener('click', restartQuiz); // Prevent duplicate listeners
+                console.log("Кнопка перезапуска найдена, добавляется обработчик событий"); // Журнал отладки
+                restartButton.removeEventListener('click', restartQuiz); // Предотвращение дублирования обработчиков
                 restartButton.addEventListener('click', restartQuiz);
             } else {
-                console.error("Restart button not found in DOM");
-                // Retry after a delay
+                console.error("Кнопка перезапуска не найдена в DOM");
+                // Повторная попытка через задержку
                 setTimeout(() => {
                     const retryButton = document.getElementById('restart-button');
                     if (retryButton) {
-                        console.log("Retry: Restart button found, adding event listener");
+                        console.log("Повтор: Кнопка перезапуска найдена, добавляется обработчик событий");
                         retryButton.removeEventListener('click', restartQuiz);
                         retryButton.addEventListener('click', restartQuiz);
                     } else {
-                        console.error("Retry: Restart button still not found");
+                        console.error("Повтор: Кнопка перезапуска всё ещё не найдена");
                     }
                 }, 1000);
             }
             try {
-                console.log("Initializing quiz..."); // Debug log
+                console.log("Инициализация викторины..."); // Журнал отладки
                 createBatches();
                 displayBatch();
             } catch (error) {
-                console.error("Error initializing quiz:", error);
+                console.error("Ошибка при инициализации викторины:", error);
             }
         });
     </script>
